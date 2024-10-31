@@ -14,6 +14,24 @@ Coming soon.
 
 ## Pictures
 
+<div style="display: flex; flex-wrap: wrap; gap: 10px;">
+    <a href="https://github.com/fortmea/arduino-drums/blob/main/project%20images/bpmcontrol.JPEG?raw=true">
+        <img src="https://github.com/fortmea/arduino-drums/blob/main/project%20images/bpmcontrol.JPEG?raw=true" width="250" style="max-height: 200px;" alt="BPM CONTROL"/>
+    </a>
+    <a href="https://github.com/fortmea/arduino-drums/blob/main/project%20images/kickcontrol.JPEG?raw=true">
+        <img src="https://github.com/fortmea/arduino-drums/blob/main/project%20images/kickcontrol.JPEG?raw=true" width="250" style="max-height: 200px;" alt="KICK DRUM CONTROL"/>
+    </a>
+    <a href="https://github.com/fortmea/arduino-drums/blob/main/project%20images/pitchcontrol.JPEG?raw=true">
+        <img src="https://github.com/fortmea/arduino-drums/blob/main/project%20images/pitchcontrol.JPEG?raw=true" width="250" style="max-height: 200px;" alt="PITCH CONTROL"/>
+    </a>
+    <a href="https://github.com/fortmea/arduino-drums/blob/main/project%20images/saveloadcontrol.JPEG?raw=true">
+        <img src="https://github.com/fortmea/arduino-drums/blob/main/project%20images/saveloadcontrol.JPEG?raw=true" width="250" style="max-height: 200px;" alt="SAVE AND LOAD MENU"/>
+    </a>
+    <a href="https://github.com/fortmea/arduino-drums/blob/main/project%20images/welcome.JPEG?raw=true">
+        <img src="https://github.com/fortmea/arduino-drums/blob/main/project%20images/welcome.JPEG?raw=true" width="250" style="max-height: 200px;" alt="WELCOME MENU"/>
+    </a>
+</div>
+
 ## Hardware
 - Arduino Uno (R3 in this case), any compatible board should work - Used a FUNDUINO.
 - 16x2 LCD (I used a 1602A) - I'm using the serial 4 bit mode.
