@@ -1,3 +1,9 @@
+//INSPIRED BY https://diyelectromusic.com/2021/06/22/arduino-mozzi-sample-drum-machine/
+//PLEASE REFER TO THE README IN https://github.com/fortmea/arduino-drums BEFORE PROCEEDING.
+
+
+
+
 #include <debounce.h>
 #include <LiquidCrystal.h>
 #include <MozziGuts.h>
@@ -331,6 +337,8 @@ void loop() {
 void welcomeMenu() {
   lcd.setCursor(0, 0);
   lcd.print("Ardubeats!");
+  lcd.setCursor(0, 1);
+  lcd.print("https://github.com/fortmea/arduino-drums");
   //lcd.scrollDisplayLeft();
 }
 
