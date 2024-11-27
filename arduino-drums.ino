@@ -1,7 +1,6 @@
 //INSPIRED BY https://diyelectromusic.com/2021/06/22/arduino-mozzi-sample-drum-machine/
+//SECOND DRUM KIT PROVIDED BY https://github.com/fakebitpolytechnic/cheapsynth
 //PLEASE REFER TO THE README IN https://github.com/fortmea/arduino-drums BEFORE PROCEEDING.
-
-
 
 
 #include <debounce.h>
@@ -9,8 +8,10 @@
 #include <MozziGuts.h>
 #include <Sample.h>
 #include <EEPROM.h>
-#include "d_kit.h"
-#define D_NUM 4
+#include "samples/d_kit.h"
+#include "samples/hihatc909.h"
+#include "samples/hihato909.h"
+#include "samples/snare909.h"
 #define CONTROL_RATE 64
 #define welcomeMenuIndex 0
 #define kickMenuIndex 1
@@ -20,32 +21,29 @@
 #define saveLoadMenuIndex 5
 #define pitchMenuIndex 6
 #define bpmPlayMenuIndex 7
+#define drumKitMenuIndex 8
 
 bool play = true;
 bool rendered = false;
 const int rs = 12, en = 11, d4 = 5, d5 = 4, d6 = 3, d7 = 2;
-const int lrnavigation = 10, tick = 8, playpause = 7, blank = 6;
+const int rnavigation = 10, lnavigation = 13, tick = 8, playpause = 7, blank = 6;
 const int listSize = 16;
-const int numLists = 4;
 const int numSlots = 3;
 const int baseAddress = 0;
 const int slotSize = listSize;
 const int listSpacing = slotSize * numSlots;
-const int bitDepth = 8;
-const long interval = 300;
-int screens = 7;
+const int screens = 8;
 int screen = 0;
 int pos = 0;
 int slotNumber = 0;
 int bpm = 120;
 int currentStep = 0;
 float pitch = 1.0;
-unsigned long millitime;
+int drumKit = 0;
 unsigned long lastStepTime = 0;
 unsigned long stepInterval = (60000 / (bpm * 4));
 unsigned long previousMillis = 0;
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
-bool trig[D_NUM];
 bool kick[16] = { false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false };
 bool snare[16] = { false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false };
 bool hat[16] = { false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false };
@@ -62,17 +60,13 @@ float snarePitch = (float)AUDIO_RATE / (float)SD_NUM_CELLS;
 float chatPitch = (float)AUDIO_RATE / (float)CH_NUM_CELLS;
 float ohatPitch = (float)AUDIO_RATE / (float)OH_NUM_CELLS;
 
+Sample<snare909_NUM_CELLS, snare909_SAMPLERATE> snareDrum(snare909_DATA);
+Sample<hihatc909_NUM_CELLS, hihatc909_SAMPLERATE> closedHat(hihatc909_DATA);
+Sample<hihato_NUM_CELLS, hihato_SAMPLERATE> openHat(hihato_DATA);
+float snare909Pitch = (float)AUDIO_RATE / (float)snare909_NUM_CELLS;
+float chat909Pitch = (float)AUDIO_RATE / (float)hihatc909_NUM_CELLS;
+float ohat909Pitch = (float)AUDIO_RATE / (float)hihato_NUM_CELLS;
 
-byte seta_baixo[8] = {
-  B00000,
-  B00000,
-  B00100,
-  B00100,
-  B00100,
-  B11111,
-  B01110,
-  B00100
-};
 
 byte tick_off[8] = {
   B11111,
@@ -85,15 +79,42 @@ byte tick_off[8] = {
   B11111
 };
 
+byte tick_off_selected[8] = {
+  B11111,
+  B10001,
+  B10001,
+  B10001,
+  B10001,
+  B11111,
+  B00000,
+  B11111
+};
+
 byte tick_on[8] = { B11111, B11111, B11111, B11111, B11111, B11111, B11111, B11111 };
+
+byte tick_on_selected[8] = { B11111, B11111, B11111, B11111, B11111, B11111, B00000, B11111 };
 
 
 void startDrum(int drum) {
-  switch (drum) {
-    case 0: aBD.start(); break;
-    case 1: aSD.start(); break;
-    case 2: aCH.start(); break;
-    case 3: aOH.start(); break;
+  switch (drumKit) {
+    case 1:
+      {
+        switch (drum) {
+          case 0: aBD.start(); break;
+          case 1: snareDrum.start(); break;
+          case 2: closedHat.start(); break;
+          case 3: openHat.start(); break;
+        }
+      }
+    case 0:
+      {
+        switch (drum) {
+          case 0: aBD.start(); break;
+          case 1: aSD.start(); break;
+          case 2: aCH.start(); break;
+          case 3: aOH.start(); break;
+        }
+      }
   }
 }
 
@@ -122,9 +143,19 @@ void loadBoolList(bool list[], int listNumber) {
 }
 
 
-static void navigationButtonHandler(uint8_t btnId, uint8_t btnState) {
+static void rNavigationButtonHandler(uint8_t btnId, uint8_t btnState) {
   if (btnState == BTN_PRESSED) {
     screen++;
+    pos = 0;
+    rendered = false;
+    lcd.clear();
+  } else {
+  }
+}
+
+static void lNavigationButtonHandler(uint8_t btnId, uint8_t btnState) {
+  if (btnState == BTN_PRESSED) {
+    screen--;
     pos = 0;
     rendered = false;
     lcd.clear();
@@ -249,6 +280,11 @@ static void playPauseButtonHandler(uint8_t btnId, uint8_t btnState) {
 static void changePosHandler(uint8_t btnId, uint8_t btnState) {
   if (btnState == BTN_PRESSED) {
     switch (screen) {
+      case drumKitMenuIndex:
+        {
+          drumKit++;
+          break;
+        }
       case bpmPlayMenuIndex:
         {
           play = !play;
@@ -271,22 +307,28 @@ static void changePosHandler(uint8_t btnId, uint8_t btnState) {
 }
 
 
-static Button navigationButton(0, navigationButtonHandler);
+static Button rNavigationButton(0, rNavigationButtonHandler);
 static Button tickButton(1, tickButtonHandler);
 static Button blankButton(2, blankButtonHandler);
 static Button playPauseButton(3, changePosHandler);  //playPauseButtonHandler);
+static Button lNavigationButton(4, lNavigationButtonHandler);
 
 void setup() {
-  pinMode(lrnavigation, INPUT_PULLUP);
+  pinMode(rnavigation, INPUT_PULLUP);
   pinMode(tick, INPUT_PULLUP);
   pinMode(playpause, INPUT_PULLUP);
   pinMode(blank, INPUT_PULLUP);
   //Serial.begin(9600);
   lcd.begin(16, 2);
-  lcd.createChar(0, seta_baixo);
+  //lcd.createChar(0, seta_baixo);
   lcd.createChar(1, tick_on);
   lcd.createChar(2, tick_off);
+  lcd.createChar(3, tick_on_selected);
+  lcd.createChar(4, tick_off_selected);
   startMozzi();
+  snareDrum.setFreq((float)D_SAMPLERATE / (float)snare909_NUM_CELLS);
+  closedHat.setFreq((float)D_SAMPLERATE / (float)hihatc909_NUM_CELLS);
+  openHat.setFreq((float)D_SAMPLERATE / (float)hihato_NUM_CELLS);
   aBD.setFreq((float)D_SAMPLERATE / (float)BD_NUM_CELLS);
   aSD.setFreq((float)D_SAMPLERATE / (float)SD_NUM_CELLS);
   aCH.setFreq((float)D_SAMPLERATE / (float)CH_NUM_CELLS);
@@ -298,6 +340,9 @@ void setup() {
 }
 
 void loop() {
+  if (drumKit > 1) {
+    drumKit = 0;
+  }
   if (pitch < 0) {
     pitch = 0;
   }
@@ -306,6 +351,10 @@ void loop() {
   }
   if (screen > screens) {
     screen = 0;
+    rendered = false;
+  }
+  if (screen < 0) {
+    screen = screens;
     rendered = false;
   }
   if (rendered == false) {
@@ -327,6 +376,8 @@ void loop() {
       saveLoadMenu();
     } else if (screen == welcomeMenuIndex) {
       welcomeMenu();
+    } else if (screen == drumKitMenuIndex) {
+      drumKitMenu();
     }
     rendered = true;
   }
@@ -334,18 +385,27 @@ void loop() {
   audioHook();
 }
 
+void drumKitMenu() {
+  lcd.setCursor(0, 0);
+  lcd.print("select drum kit");
+  lcd.setCursor(0, 1);
+  lcd.print(drumKit);
+}
+
 void welcomeMenu() {
   lcd.setCursor(0, 0);
   lcd.print("Ardubeats!");
   lcd.setCursor(0, 1);
-  lcd.print("https://github.com/fortmea/arduino-drums");
+  lcd.print("github.com/fortmea/arduino-drums");
+  lcd.print(" ");
   //lcd.scrollDisplayLeft();
 }
 
 static void pollButtons() {
   // update() will call buttonHandler() if PIN transitions to a new state and stays there
   // for multiple reads over 25+ ms.
-  navigationButton.update(digitalRead(lrnavigation));
+  rNavigationButton.update(digitalRead(rnavigation));
+  lNavigationButton.update(digitalRead(lnavigation));
   tickButton.update(digitalRead(tick));
   blankButton.update(digitalRead(blank));
   playPauseButton.update(digitalRead(playpause));
@@ -362,11 +422,13 @@ void pitchMenu() {
 void kickMenu() {
   lcd.setCursor(0, 0);
   lcd.print("kick");
-  lcd.setCursor(pos, 0);
-  lcd.write(byte(0));
   lcd.setCursor(0, 1);
   for (int i = 0; i < 16; i++) {
-    lcd.write(kick[i] ? 1 : 2);
+    if (pos == i) {
+      lcd.write(kick[i] ? 3 : 4);
+    } else {
+      lcd.write(kick[i] ? 1 : 2);
+    }
   }
 }
 
@@ -374,21 +436,29 @@ void snareMenu() {
   lcd.setCursor(0, 0);
   lcd.print("snare");
   lcd.setCursor(pos, 0);
-  lcd.write(byte(0));
+  //lcd.write(byte(0));
   lcd.setCursor(0, 1);
   for (int i = 0; i < 16; i++) {
-    lcd.write(snare[i] ? 1 : 2);
+    if (pos == i) {
+      lcd.write(snare[i] ? 3 : 4);
+    } else {
+      lcd.write(snare[i] ? 1 : 2);
+    }
   }
 }
 
 void clapMenu() {
   lcd.setCursor(0, 0);
-  lcd.print("hi hat");
+  lcd.print("closed hat");
   lcd.setCursor(pos, 0);
-  lcd.write(byte(0));
+  //lcd.write(byte(0));
   lcd.setCursor(0, 1);
   for (int i = 0; i < 16; i++) {
-    lcd.write(clap[i] ? 1 : 2);
+    if (pos == i) {
+      lcd.write(clap[i] ? 3 : 4);
+    } else {
+      lcd.write(clap[i] ? 1 : 2);
+    }
   }
 }
 
@@ -396,10 +466,14 @@ void hatMenu() {
   lcd.setCursor(0, 0);
   lcd.print("open hat");
   lcd.setCursor(pos, 0);
-  lcd.write(byte(0));
+  //lcd.write(byte(0));
   lcd.setCursor(0, 1);
   for (int i = 0; i < 16; i++) {
-    lcd.write(hat[i] ? 1 : 2);
+    if (pos == i) {
+      lcd.write(hat[i] ? 3 : 4);
+    } else {
+      lcd.write(hat[i] ? 1 : 2);
+    }
   }
 }
 
@@ -422,7 +496,7 @@ void updateControl() {
 
 
   if ((millis() - lastStepTime >= stepInterval) && play) {
-    if ((currentMillis - previousMillis >= interval) && (screen == welcomeMenuIndex)) {
+    if ((currentMillis - previousMillis >= 300) && (screen == welcomeMenuIndex)) {
       previousMillis = currentMillis;
       lcd.scrollDisplayLeft();
     }
@@ -431,7 +505,9 @@ void updateControl() {
     aSD.setFreq(snarePitch * pitch);
     aCH.setFreq(chatPitch * pitch);
     aOH.setFreq(ohatPitch * pitch);
-    // Tocar os samples se a etapa atual for marcada como true
+    snareDrum.setFreq(snare909Pitch * pitch);
+    closedHat.setFreq(chat909Pitch * pitch);
+    openHat.setFreq(ohat909Pitch * pitch);
     if (kick[currentStep]) {
       startDrum(0);
     }
@@ -450,8 +526,18 @@ void updateControl() {
   }
 }
 AudioOutput_t updateAudio() {
+  int16_t d_sample;
+  switch (drumKit) {
+    case 0:
+      {
+        d_sample = aBD.next() + snareDrum.next() + closedHat.next() + openHat.next();
+        break;
+      }
+    case 1:
+      {
+        d_sample = aBD.next() + aSD.next() + aCH.next() + aOH.next();
+      }
+  }
 
-
-  int16_t d_sample = aBD.next() + aSD.next() + aCH.next() + aOH.next();
   return MonoOutput::fromNBit(9, d_sample);
 }

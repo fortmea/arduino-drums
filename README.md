@@ -8,6 +8,7 @@ The goal here is to develop a simple, easy to make and use lo-fi drum machine.
 - Save/Load 4 beats to the built-in EEPROM on the arduino.
 - Pitch control.
 - BPM control.
+- 2 Preset drum kits.
 
 ## Showcase
 Coming soon.
@@ -35,12 +36,18 @@ Coming soon.
 ## Hardware
 - Arduino Uno (R3 in this case), any compatible board should work - Used a FUNDUINO.
 - 16x2 LCD (I used a 1602A) - I'm using the serial 4 bit mode.
-- 4 * push buttons.
+- 4 * push buttons. A 5th button in the 13th pin is optional and will allow you to navigate backwards through the menus.
 - A single 10k or 5k potentiometer (contrast control).
 - Jumper wires.
 
 ## Schematics
-![alt text](https://github.com/fortmea/arduino-drums/blob/main/ArduBeats_bb.jpg?raw=true)
+![Basic Circuit](https://github.com/fortmea/arduino-drums/blob/main/ArduBeats_bb.jpg?raw=true)
+
+
+## Inspiration and 3rd party libraries/code
+ - [Mozzi - Arduino music library](https://sensorium.github.io/Mozzi/) 
+ - [fakebitpolytechnic's cheapsynth -> Second DrumKit](https://github.com/fakebitpolytechnic/cheapsynth)
+ - [diyelectromusic.com - Arduino Mozzi Sample Drum Machine](https://diyelectromusic.com/2021/06/22/arduino-mozzi-sample-drum-machine/)
 
 ## License
 Copyright 2024 fortmea.tech
